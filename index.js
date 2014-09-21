@@ -5,7 +5,9 @@ var once = require('once');
 
 var DEFAULTS = {
   baudrate: 9600,
-  timeout: 60
+  timeout: 60,
+  expect: 'OK',
+  endline: '\r'
 };
 
 var noop = function(){};
@@ -22,6 +24,8 @@ function Modem(port, options, cb) {
   this.options = options || {};
   this.options.baudrate = this.options.baudrate || DEFAULTS.baudrate;
   this.options.timeout = this.options.timeout || DEFAULTS.timeout;
+  this.options.endline = this.options.endline || DEFAULTS.endline;
+  //
   cb && (cb = once(cb));
   //
   this.serialPort = new SerialPort(port, {
@@ -35,6 +39,7 @@ Modem.prototype.handleEvents = function(serialPort, cb) {
   serialPort.on('open', function() {
     this.ready = true;
     cb && cb();
+    this.startQueueDigester();
   }.bind(this));
   //
   serialPort.on('error', function(err) {
@@ -48,19 +53,24 @@ Modem.prototype.handleEvents = function(serialPort, cb) {
   }.bind(this));
 };
 
-Modem.prototype.command = function(command, timeout, cb) {
+Modem.prototype.command = function(command, options, cb) {
   if (!cb) {
-    cb = timeout;
-    timeout = this.options.timeout;
+    cb = options;
+    options = {};
   }
-  this._enqueue(command, timeout, cb);
+  options.expect = options.expect || this.options.expect;
+  options.timeout = options.timeout || this.options.timeout;
+  options.endline = options.endline || this.options.endline;
+  this._enqueue(command, options, cb);
 };
 
-Modem.prototype._enqueue = function(command, timeout, cb) {
+Modem.prototype._enqueue = function(command, options, cb) {
   // enqueue command
   this.queue.push({
     command: command,
-    timeout: timeout,
+    expect: options.expect,
+    timeout: options.timeout,
+    endline: options.endline,
     cb: cb || noop
   });
   this.startQueueDigester();
@@ -69,7 +79,14 @@ Modem.prototype._enqueue = function(command, timeout, cb) {
 Modem.prototype._executor = function(cmdObj) {
   var cb = once(function(err, data) {
     this.idle = true;
-    cmdObj.cb(err, data);
+    if (data.trim() !== cmdObj.expect) {
+      err = new Error('Unexpected response: ' + data + ' when we wanted: ' + cmdObj.expect);
+    }
+    if (err) {
+      cmdObj.cb(err);
+    } else {
+      cmdObj.cb(null, data);
+    }
     this.startQueueDigester();
   }.bind(this));
   var timeout = setTimeout(function () {
@@ -77,7 +94,7 @@ Modem.prototype._executor = function(cmdObj) {
   }.bind(this), cmdObj.timeout * 1000);
   //
   this.idle = false;
-  this.serialPort.write(cmdObj.command, cb);
+  this.serialPort.write(cmdObj.command + cmdObj.endline, cb);
 };
 
 Modem.prototype.startQueueDigester = function() {

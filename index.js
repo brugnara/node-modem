@@ -2,6 +2,7 @@
 var SerialPort = require('serialport').SerialPort;
 var async = require('async');
 var once = require('once');
+var EE = require('events').EventEmitter;
 
 var DEFAULTS = {
   baudrate: 9600,
@@ -17,6 +18,8 @@ function Modem(port, options, cb) {
   this.idle = true;
   this.ready = false;
   this.queue = [];
+  this.events = [];
+  this.eventEmitter = new EE();
   if (!cb) {
     cb = options;
     options = null;
@@ -35,6 +38,13 @@ function Modem(port, options, cb) {
   this.handleEvents(this.serialPort, cb);
 }
 
+Modem.prototype.on = function(event, handler) {
+  if (this.events.indexOf(Event) === -1) {
+    this.events.push(event);
+  }
+  this.eventEmitter.on(event, handler);
+};
+
 Modem.prototype.handleEvents = function(serialPort, cb) {
   serialPort.on('open', function() {
     this.ready = true;
@@ -50,6 +60,13 @@ Modem.prototype.handleEvents = function(serialPort, cb) {
   serialPort.on('close', function() {
     this.ready = false;
     cb && cb();
+  }.bind(this));
+  //
+  serialPort.on('data', function(data) {
+    // is something we are waiting for? ie: RING
+    if (this.events.indexOf(data) !== -1) {
+      this.eventEmitter.emit(data);
+    }
   }.bind(this));
 };
 

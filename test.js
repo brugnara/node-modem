@@ -37,3 +37,8 @@ async.waterfall([
 ], function(err) {
   err && console.error(err);
 });
+
+// listen for a serial port event, ie: RING
+modem.on('RING', function() {
+  console.log('Ringing!!!!');
+});

@@ -44,7 +44,6 @@ modem.on('RING', function() {
 });
 
 // sequence
-
 modem.sequence([
   {
     command: 'AT+CMGS="+393420011223"',
@@ -59,3 +58,17 @@ modem.sequence([
   err && console.error(err);
   console.log('done');
 });
+
+// sending with PDU
+
+var pdu = require('sms-pdu-node');
+var PDU = pdu('ciao', '393420011223', null, 7);
+modem.sequence([
+  {
+    command: PDU.command,
+    expect: '>'
+  },
+  {
+    command: PDU.pdu
+  }
+], console.log.bind(console));

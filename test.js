@@ -42,3 +42,20 @@ async.waterfall([
 modem.on('RING', function() {
   console.log('Ringing!!!!');
 });
+
+// sequence
+
+modem.sequence([
+  {
+    command: 'AT+CMGS="+393420011223"',
+    options: {
+      expect: '>'
+    }
+  },
+  {
+    command: 'CIAO MONDO!'
+  }
+], function(err) {
+  err && console.error(err);
+  console.log('done');
+});

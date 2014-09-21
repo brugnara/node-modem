@@ -39,7 +39,7 @@ function Modem(port, options, cb) {
 }
 
 Modem.prototype.on = function(event, handler) {
-  if (this.events.indexOf(Event) === -1) {
+  if (this.events.indexOf(event) === -1) {
     this.events.push(event);
   }
   this.eventEmitter.on(event, handler);
@@ -75,43 +75,65 @@ Modem.prototype.command = function(command, options, cb) {
     cb = options;
     options = {};
   }
-  options.expect = options.expect || this.options.expect;
-  options.timeout = options.timeout || this.options.timeout;
-  options.endline = options.endline || this.options.endline;
-  this._enqueue(command, options, cb);
+  this._enqueue({
+    type: 'single',
+    commands: [
+      this._prepareCommand(command, options)
+    ],
+    cb: cb || noop
+  }, cb);
 };
 
-Modem.prototype._enqueue = function(command, options, cb) {
-  // enqueue command
-  this.queue.push({
+Modem.prototype._prepareCommand = function(command, options) {
+  return {
     command: command,
-    expect: options.expect,
-    timeout: options.timeout,
-    endline: options.endline,
+    expect: options.expect || this.options.expect,
+    timeout: options.timeout || this.options.timeout,
+    endline: options.endline || this.options.endline
+  }
+};
+
+Modem.prototype.sequence = function(commands, cb) {
+  var cmds = [];
+  commands.forEach(function(command) {
+    if (!command.command) {
+      throw new Error('Missing command!');
+    }
+    cmds.push(this._prepareCommand(command.command, command.options || {}));
+  }.bind(this));
+  //
+  this._enqueue({
+    type: 'sequence',
+    commands: cmds,
     cb: cb || noop
-  });
+  })
+};
+
+Modem.prototype._enqueue = function(commands) {
+  // enqueue command
+  this.queue.push(commands);
   this.startQueueDigester();
 };
 
-Modem.prototype._executor = function(cmdObj) {
-  var cb = once(function(err, data) {
-    this.idle = true;
-    if (data.trim() !== cmdObj.expect) {
-      err = new Error('Unexpected response: ' + data + ' when we wanted: ' + cmdObj.expect);
-    }
-    if (err) {
-      cmdObj.cb(err);
-    } else {
-      cmdObj.cb(null, data);
-    }
-    this.startQueueDigester();
-  }.bind(this));
-  var timeout = setTimeout(function () {
-    cb(new Error('timed out'));
-  }.bind(this), cmdObj.timeout * 1000);
-  //
-  this.idle = false;
-  this.serialPort.write(cmdObj.command + cmdObj.endline, cb);
+Modem.prototype._executor = function(cmdsObj) {
+  async.series(cmdsObj.commands, function(cmdObj, cb) {
+    var timeout;
+    cb = once(function(err, data) {
+      clearTimeout(timeout);
+      this.idle = true;
+      if (data.trim() !== cmdObj.expect) {
+        err = new Error('Unexpected response: ' + data + ' when we wanted: ' + cmdObj.expect);
+      }
+      cb(err, data);
+      this.startQueueDigester();
+    }.bind(this));
+    timeout = setTimeout(function () {
+      cb(new Error('timed out'));
+    }.bind(this), cmdObj.timeout * 1000);
+    //
+    this.idle = false;
+    this.serialPort.write(cmdObj.command + cmdObj.endline, cb);
+  }.bind(this), cmdsObj.cb);
 };
 
 Modem.prototype.startQueueDigester = function() {

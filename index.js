@@ -68,16 +68,21 @@ Modem.prototype.handleEvents = function(serialPort, cb) {
   //
   serialPort.on('data', function(data) {
     data = data.toString().trim();
+    var res = data.split('\n').map(function(r) {
+      return r.trim();
+    }).pop();
     // is something we are waiting for? ie: RING
-    if (this.events.indexOf(data) !== -1) {
-      this.eventEmitter.emit(data);
+    if (this.events.indexOf(res) !== -1) {
+      this.eventEmitter.emit(res);
     }
     if (this.next) {
-      var err = null;
-      if (data !== this.next.expect) {
-        err = new Error('Unexpected response: ' + data + ' when expecting: ' + this.next.expect);
+      if (res === this.next.expect) {
+        this.next.cb && this.next.cb(null, data);
+      } else {
+        if (res.indexOf('ERROR') !== -1) {
+          this.next.cb && this.next.cb(new Error(res));
+        }
       }
-      this.next.cb && this.next.cb(err, data);
     }
   }.bind(this));
 };

@@ -15,10 +15,14 @@ modem.sequence([
   },
   {
     command: PDU.command,
-    expect: '>',
-    endline: Modem.ctrlZ
+    options: {
+      expect: '>'
+    }
   },
   {
-    command: PDU.pdu
+    command: PDU.pdu,
+    options: {
+      endline: Modem.ctrlZ
+    }
   }
 ], console.log.bind(console));

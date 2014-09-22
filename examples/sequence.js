@@ -23,4 +23,5 @@ modem.sequence([
 ], function(err) {
   err && console.error(err);
   console.log('done');
+  modem.close();
 });

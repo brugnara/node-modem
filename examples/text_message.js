@@ -27,4 +27,5 @@ async.waterfall([
   }
 ], function(err) {
   err && console.error(err);
+  modem.close();
 });

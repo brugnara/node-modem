@@ -12,4 +12,5 @@ var modem = new Modem('/dev/tty.usbserial', function(err, data) {
 // listen for a serial port event, ie: RING
 modem.on('RING', function() {
   console.log('Ringing!!!!');
+  modem.close();
 });

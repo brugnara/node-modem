@@ -42,6 +42,10 @@ function Modem(port, options, cb) {
 
 Modem.ctrlZ = String.fromCharCode(26);
 
+Modem.prototype.close = function(cb) {
+  this.serialPort && this.ready && this.serialPort.close(cb);
+};
+
 Modem.prototype.on = function(event, handler) {
   if (this.events.indexOf(event) === -1) {
     this.events.push(event);

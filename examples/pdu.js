@@ -25,4 +25,7 @@ modem.sequence([
       endline: Modem.ctrlZ
     }
   }
-], console.log.bind(console));
+], function(err) {
+  err && console.error(err);
+  modem.close();
+});

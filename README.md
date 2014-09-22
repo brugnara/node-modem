@@ -6,6 +6,15 @@ With this module, you can enqueue commands via serial. It's main scope is to ope
 
 Refer to `examples` for real use cases.
 
+# Install
+
+```bash
+npm install --save node-modem
+
+# if you need a fully working PDU converter:
+# npm install --save sms-pdu-node 
+```
+
 # Usage
 
 ```js

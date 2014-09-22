@@ -15,6 +15,7 @@ var noop = function(){};
 
 function Modem(port, options, cb) {
   this.port = port;
+  this.next = null;
   this.idle = true;
   this.ready = false;
   this.queue = [];
@@ -28,6 +29,7 @@ function Modem(port, options, cb) {
   this.options.baudrate = this.options.baudrate || DEFAULTS.baudrate;
   this.options.timeout = this.options.timeout || DEFAULTS.timeout;
   this.options.endline = this.options.endline || DEFAULTS.endline;
+  this.options.expect = this.options.expect || DEFAULTS.expect;
   //
   cb && (cb = once(cb));
   //
@@ -37,6 +39,8 @@ function Modem(port, options, cb) {
   // events
   this.handleEvents(this.serialPort, cb);
 }
+
+Modem.ctrlZ = String.fromCharCode(26);
 
 Modem.prototype.on = function(event, handler) {
   if (this.events.indexOf(event) === -1) {
@@ -63,9 +67,17 @@ Modem.prototype.handleEvents = function(serialPort, cb) {
   }.bind(this));
   //
   serialPort.on('data', function(data) {
+    data = data.toString().trim();
     // is something we are waiting for? ie: RING
     if (this.events.indexOf(data) !== -1) {
       this.eventEmitter.emit(data);
+    }
+    if (this.next) {
+      var err = null;
+      if (data !== this.next.expect) {
+        err = new Error('Unexpected response: ' + data + ' when expecting: ' + this.next.expect);
+      }
+      this.next.cb && this.next.cb(err, data);
     }
   }.bind(this));
 };
@@ -116,23 +128,26 @@ Modem.prototype._enqueue = function(commands) {
 };
 
 Modem.prototype._executor = function(cmdsObj) {
-  async.series(cmdsObj.commands, function(cmdObj, cb) {
+  async.eachSeries(cmdsObj.commands, function(cmdObj, next) {
     var timeout;
-    cb = once(function(err, data) {
+    var cb = once(function(err, data) {
       clearTimeout(timeout);
       this.idle = true;
-      if (data.trim() !== cmdObj.expect) {
-        err = new Error('Unexpected response: ' + data + ' when we wanted: ' + cmdObj.expect);
-      }
-      cb(err, data);
+      next(err, data);
       this.startQueueDigester();
     }.bind(this));
+    this.next = {
+      cb: cb,
+      expect: cmdObj.expect
+    };
     timeout = setTimeout(function () {
       cb(new Error('timed out'));
     }.bind(this), cmdObj.timeout * 1000);
     //
     this.idle = false;
-    this.serialPort.write(cmdObj.command + cmdObj.endline, cb);
+    this.serialPort.write(cmdObj.command + cmdObj.endline, function(err) {
+      err && cb(err);
+    });
   }.bind(this), cmdsObj.cb);
 };
 

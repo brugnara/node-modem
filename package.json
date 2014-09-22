@@ -14,7 +14,8 @@
     "modem",
     "serial",
     "port",
-    "serialport"
+    "serialport",
+    "pdu"
   ],
   "author": "Daniele Brugnara",
   "license": "MIT",

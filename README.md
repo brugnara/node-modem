@@ -12,7 +12,7 @@ Refer to `examples` for real use cases.
 npm install --save node-modem
 
 # if you need a fully working PDU converter:
-# npm install --save sms-pdu-node 
+# npm install --save sms-pdu-node
 ```
 
 # Usage
@@ -29,7 +29,7 @@ modem.command('AT+CMGF=1', console.log.bind(console));
 
 ## Sequence
 
-Use this to execute a sequence of commands. 
+Use this to execute a sequence of commands.
 
 ```js
 var pdu = require('sms-pdu-node');
@@ -53,3 +53,8 @@ modem.sequence([
   }
 ], console.log.bind(console));
 ```
+
+# Changelog
+
+- 1.1.2: Fixes some strange issues related on reading data with some modems.
+- 1.1.1: Initial release

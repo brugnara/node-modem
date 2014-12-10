@@ -1,5 +1,5 @@
-
-var SerialPort = require('serialport').SerialPort;
+var serialport = require('serialport');
+var SerialPort = serialport.SerialPort;
 var async = require('async');
 var once = require('once');
 var EE = require('events').EventEmitter;
@@ -34,7 +34,8 @@ function Modem(port, options, cb) {
   cb && (cb = once(cb));
   //
   this.serialPort = new SerialPort(port, {
-    baudrate: this.options.baudrate
+    baudrate: this.options.baudrate,
+    parser: serialport.parsers.readline('\n')
   });
   // events
   this.handleEvents(this.serialPort, cb);
@@ -71,21 +72,19 @@ Modem.prototype.handleEvents = function(serialPort, cb) {
   }.bind(this));
   //
   serialPort.on('data', function(data) {
-    data = data.toString().trim();
-    var res = data.split('\n').map(function(r) {
-      return r.trim();
-    }).pop();
+    var res = data.toString().trim();
+    if (res === this.lastCommand && this.next.expect != '>') {
+      return;
+    }
     // is something we are waiting for? ie: RING
     if (this.events.indexOf(res) !== -1) {
       this.eventEmitter.emit(res);
     }
     if (this.next) {
-      if (res === this.next.expect) {
-        this.next.cb && this.next.cb(null, data);
+      if (res.indexOf('ERROR') !== -1) {
+        this.next.cb && this.next.cb(new Error(res));
       } else {
-        if (res.indexOf('ERROR') !== -1) {
-          this.next.cb && this.next.cb(new Error(res));
-        }
+        this.next.cb && this.next.cb(null, res);
       }
     }
   }.bind(this));
@@ -154,9 +153,12 @@ Modem.prototype._executor = function(cmdsObj) {
     }.bind(this), cmdObj.timeout * 1000);
     //
     this.idle = false;
+    this.lastCommand = cmdObj.command;
     this.serialPort.write(cmdObj.command + cmdObj.endline, function(err) {
-      err && cb(err);
-    });
+      this.serialPort.drain(function() {
+        err && cb(err);
+      });
+    }.bind(this));
   }.bind(this), cmdsObj.cb);
 };
 

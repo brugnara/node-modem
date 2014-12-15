@@ -34,8 +34,7 @@ function Modem(port, options, cb) {
   cb && (cb = once(cb));
   //
   this.serialPort = new SerialPort(port, {
-    baudrate: this.options.baudrate,
-    parser: serialport.parsers.readline('\n')
+    baudrate: this.options.baudrate
   });
   // events
   this.handleEvents(this.serialPort, cb);
@@ -55,6 +54,7 @@ Modem.prototype.on = function(event, handler) {
 };
 
 Modem.prototype.handleEvents = function(serialPort, cb) {
+  var line = '';
   serialPort.on('open', function() {
     this.ready = true;
     cb && cb();
@@ -72,20 +72,26 @@ Modem.prototype.handleEvents = function(serialPort, cb) {
   }.bind(this));
   //
   serialPort.on('data', function(data) {
-    var res = data.toString().trim();
-    if (res === this.lastCommand && this.next.expect != '>') {
-      return;
-    }
-    // is something we are waiting for? ie: RING
-    if (this.events.indexOf(res) !== -1) {
-      this.eventEmitter.emit(res);
-    }
-    if (this.next) {
-      if (res.indexOf('ERROR') !== -1) {
-        this.next.cb && this.next.cb(new Error(res));
-      } else {
-        this.next.cb && this.next.cb(null, res);
+    line+=data;
+    var res = line.trim();
+    if (line[line.length-1] === '\n' || line.indexOf('>') !== -1) {
+      // is something we are waiting for? ie: RING
+      if (this.events.indexOf(res) !== -1) {
+        this.eventEmitter.emit(res);
       }
+      // console.log('expected:', this.next.expect, 'got:', res);
+      if (this.next) {
+        if (line.indexOf('ERROR') !== -1) {
+          return this.next.cb(new Error(line));
+        }
+        if (res === this.next.expect) {
+          // console.log('calling next');
+          return this.next.cb(null, res);
+        }
+      }
+      line = '';
+    } else {
+      // console.log('Mmmmm:', line);
     }
   }.bind(this));
 };

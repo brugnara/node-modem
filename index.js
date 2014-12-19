@@ -14,6 +14,8 @@ var DEFAULTS = {
 var noop = function(){};
 
 function Modem(port, options, cb) {
+  var opts;
+  //
   this.port = port;
   this.next = null;
   this.idle = true;
@@ -30,12 +32,12 @@ function Modem(port, options, cb) {
   this.options.timeout = this.options.timeout || DEFAULTS.timeout;
   this.options.endline = this.options.endline || DEFAULTS.endline;
   this.options.expect = this.options.expect || DEFAULTS.expect;
+  opts = this.options.modem || {};
+  opts.baudrate = this.options.baudrate;
   //
   cb && (cb = once(cb));
   //
-  this.serialPort = new SerialPort(port, {
-    baudrate: this.options.baudrate
-  });
+  this.serialPort = new SerialPort(port, opts);
   // events
   this.handleEvents(this.serialPort, cb);
 }

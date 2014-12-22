@@ -56,6 +56,7 @@ modem.sequence([
 
 # Changelog
 
+- 1.1.5: Improved read when multilines comes from on('data').
 - 1.1.4: Now you can pass options.modem to constructor. That object, will be passed to the Serialport constructor.
 - 1.1.3: Rewritten parser
 - 1.1.2: Fixes some strange issues related on reading data with some modems.

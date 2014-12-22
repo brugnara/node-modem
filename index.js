@@ -76,6 +76,10 @@ Modem.prototype.handleEvents = function(serialPort, cb) {
   serialPort.on('data', function(data) {
     line+=data;
     var res = line.trim();
+    var ar = res.split('\n');
+    if (ar.length) {
+      res = ar[ar.length-1].trim();
+    }
     if (line[line.length-1] === '\n' || line.indexOf('>') !== -1) {
       // is something we are waiting for? ie: RING
       if (this.events.indexOf(res) !== -1) {

@@ -11,6 +11,8 @@ var DEFAULTS = {
   endline: '\r'
 };
 
+var DEBUG = false;
+
 var noop = function(){};
 
 function Modem(port, options, cb) {
@@ -56,7 +58,7 @@ Modem.prototype.on = function(event, handler) {
 };
 
 Modem.prototype.handleEvents = function(serialPort, cb) {
-  var line = '';
+  var data = '';
   serialPort.on('open', function() {
     this.ready = true;
     cb && cb();
@@ -73,33 +75,41 @@ Modem.prototype.handleEvents = function(serialPort, cb) {
     cb && cb();
   }.bind(this));
   //
-  serialPort.on('data', function(data) {
-    line+=data;
-    var res = line.trim();
-    var ar = res.split('\n');
-    if (ar.length) {
-      res = ar[ar.length-1].trim();
+  serialPort.on('data', function(buffer) {
+    // Collect data
+    data+= buffer.toString();
+    DEBUG && console.log('DATA:', data);
+    // Split collected data by delimiter
+    var parts = data.split('\r\n');
+    DEBUG && console.log('PARTS:', parts);
+    data = parts.pop();
+    DEBUG && console.log('POPPED DATA:', data);
+    if (data.trim() === '>' && this.next.expect === '>') {
+      this.digestModemResponse('>');
     }
-    if (line[line.length-1] === '\n' || line.indexOf('>') !== -1) {
-      // is something we are waiting for? ie: RING
-      if (this.events.indexOf(res) !== -1) {
-        this.eventEmitter.emit(res);
-      }
-      // console.log('expected:', this.next.expect, 'got:', res);
-      if (this.next) {
-        if (line.indexOf('ERROR') !== -1) {
-          return this.next.cb(new Error(line));
-        }
-        if (res === this.next.expect) {
-          // console.log('calling next');
-          return this.next.cb(null, res);
-        }
-      }
-      line = '';
-    } else {
-      // console.log('Mmmmm:', line);
-    }
+    parts.forEach(function (part) {
+      DEBUG && console.log('PART:', part);
+      this.digestModemResponse(part.trim());
+    }.bind(this));
   }.bind(this));
+
+};
+
+Modem.prototype.digestModemResponse = function(res) {
+  // is something we are waiting for? ie: RING
+  if (this.events.indexOf(res) !== -1) {
+    this.eventEmitter.emit(res);
+  }
+  DEBUG && console.log('expected:', this.next.expect, 'got:', res);
+  if (this.next) {
+    if (res.indexOf('ERROR') !== -1) {
+      return this.next.cb(new Error(res));
+    }
+    if (res === this.next.expect) {
+      DEBUG && console.log('calling next');
+      return this.next.cb(null, res);
+    }
+  }
 };
 
 Modem.prototype.command = function(command, options, cb) {

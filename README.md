@@ -54,8 +54,24 @@ modem.sequence([
 ], console.log.bind(console));
 ```
 
+## Reading data (ie read received sms)
+
+```js
+
+modem.sequence([
+  {
+    command: 'AT+CMGF=0'
+  },
+  {
+    command: 'AT+CMGL=4' // reads all SIM messages
+  }
+], console.log.bind(console));
+```
+
 # Changelog
 
+- 1.1.7: Returning values from commands. Useful for reading messages.
+- 1.1.6: Minor fixes
 - 1.1.5: Improved read when multilines comes from on('data').
 - 1.1.4: Now you can pass options.modem to constructor. That object, will be passed to the Serialport constructor.
 - 1.1.3: Rewritten parser

@@ -29,6 +29,7 @@ function Modem(port, options, cb) {
     cb = options;
     options = null;
   }
+  this.responseParts = [];
   this.options = options || {};
   this.options.baudrate = this.options.baudrate || DEFAULTS.baudrate;
   this.options.timeout = this.options.timeout || DEFAULTS.timeout;
@@ -39,7 +40,7 @@ function Modem(port, options, cb) {
   //
   cb && (cb = once(cb));
   //
-  this.serialPort = new SerialPort(port, opts);
+  this.serialPort = new SerialPort(this.port, opts);
   // events
   this.handleEvents(this.serialPort, cb);
 }
@@ -101,11 +102,15 @@ Modem.prototype.digestModemResponse = function(res) {
     this.eventEmitter.emit(res);
   }
   DEBUG && console.log('expected:', this.next.expect, 'got:', res);
+  this.responseParts.push(res);
   if (this.next) {
     if (res.indexOf('ERROR') !== -1) {
       return this.next.cb(new Error(res));
     }
     if (res === this.next.expect) {
+      DEBUG && console.log('returning:', this.responseParts);
+      res = JSON.parse(JSON.stringify(this.responseParts));
+      this.responseParts = [];
       DEBUG && console.log('calling next');
       return this.next.cb(null, res);
     }
@@ -158,7 +163,7 @@ Modem.prototype._enqueue = function(commands) {
 };
 
 Modem.prototype._executor = function(cmdsObj) {
-  async.eachSeries(cmdsObj.commands, function(cmdObj, next) {
+  async.mapSeries(cmdsObj.commands, function(cmdObj, next) {
     var timeout;
     var cb = once(function(err, data) {
       clearTimeout(timeout);
@@ -174,8 +179,8 @@ Modem.prototype._executor = function(cmdsObj) {
       cb(new Error('timed out'));
     }.bind(this), cmdObj.timeout * 1000);
     //
-    this.idle = false;
     this.lastCommand = cmdObj.command;
+    this.idle = false;
     this.serialPort.write(cmdObj.command + cmdObj.endline, function(err) {
       this.serialPort.drain(function() {
         err && cb(err);

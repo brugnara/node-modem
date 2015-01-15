@@ -6,6 +6,20 @@ With this module, you can enqueue commands via serial. It's main scope is to ope
 
 Refer to `examples` for real use cases.
 
+# Reality
+
+We are using this module in a RoundRobin configuration with 2 servers with 4 modems each.
+With this configuration, we are able to to send 8 messages simultaneously and 170k messages a day. Each message takes 2-4 seconds to be sent, depending on his length.
+
+This module works but you need to write commands your self, it is not a stand-alone-do-all-for-me module so please remenber this and check examples for use-cases.
+
+Feel free to try it and report any issue you have. I'm happy to help and improve.
+
+# PDU and concatenated messages
+
+There are no good solutions in JS on NPM you can use to achieve this.
+I suggest you to use `python-messaging` and with a simple script file, you can encode/decode correctly messages. If you want to send only TEXT messages, be sure they are 160chars max or the modem will fail with a generic **ERROR**.
+ 
 # Install
 
 ```bash
@@ -37,7 +51,7 @@ var PDU = pdu('ciao', '393420011223', null, 7);
 
 modem.sequence([
   {
-    command: 'AT+CMGF=0'
+    command: 'AT+CMGF=0' // enables PDU mode (check examples for a TEXT send)
   },
   {
     command: PDU.command,

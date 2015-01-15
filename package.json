@@ -1,6 +1,6 @@
 {
   "name": "node-modem",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "a modem manager.",
   "main": "index.js",
   "scripts": {

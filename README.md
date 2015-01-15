@@ -84,6 +84,7 @@ modem.sequence([
 
 # Changelog
 
+- 1.1.8: Improved README
 - 1.1.7: Returning values from commands. Useful for reading messages.
 - 1.1.6: Minor fixes
 - 1.1.5: Improved read when multilines comes from on('data').
